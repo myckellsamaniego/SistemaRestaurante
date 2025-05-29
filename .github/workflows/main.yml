@@ -1,19 +1,48 @@
-name: Build
+name: Build and Analyze with SonarCloud # Nombre del flujo de trabajo
+
 on:
   push:
     branches:
-      - main
+      - main # Se activa cuando haces un 'push' a la rama 'main' (o tu rama principal)
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened] # Se activa en pull requests
+
 jobs:
   sonarqube:
-    name: SonarQube
-    runs-on: windows-latest
+    name: SonarQube Scan # Nombre del trabajo
+    runs-on: ubuntu-latest # ¡CAMBIADO! Ubuntu es más común y fiable para Java/Linux
+
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - name: SonarQube Scan
+          fetch-depth: 0 # Clonación completa para un mejor análisis de historial
+
+      # Nuevo paso: Configurar el JDK para Java
+      - name: Set up JDK 17 # Asegúrate de que esta versión de Java coincida con tu proyecto
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17' # ¡IMPORTANTE! Si tu proyecto usa otra versión (ej. 8, 11), cámbiala aquí
+          distribution: 'temurin'
+          # No se necesita cache para Maven/Gradle aquí, ya que no estamos compilando con ellos.
+
+      - name: SonarQube Scan # Paso de escaneo de SonarQube
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Necesario para la decoración de PR en GitHub
+
+        # Añadimos 'args' para pasar las propiedades directamente al escáner.
+        # Esto es una forma más robusta de asegurar que se usen.
+        with:
+          args: >
+            -Dsonar.projectKey=myckellsamaniego_SistemaRestaurante
+            -Dsonar.organization=myckellsamaniego
+            -Dsonar.sources=.
+            -Dsonar.language=java
+            -Dsonar.java.source=17
+            -Dsonar.java.target=17
+            -Dsonar.sourceEncoding=UTF-8
+            # Puedes añadir más propiedades aquí si es necesario
+            # Por ejemplo, para especificar rutas de binarios si tu proyecto se compila y quieres análisis más profundos
+            # -Dsonar.java.binaries=./path/to/compiled/classes
+            # -Dsonar.binaries=./path/to/compiled/classes
